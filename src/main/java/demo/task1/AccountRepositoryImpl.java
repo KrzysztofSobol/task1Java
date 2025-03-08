@@ -2,6 +2,7 @@ package demo.task1;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.Optional;
 
 public class AccountRepositoryImpl implements AccountRepository {
@@ -19,22 +20,33 @@ public class AccountRepositoryImpl implements AccountRepository {
         return new Account(a);
     }
 
+    // fix 2: not using findById because it returns a copy
+    // didn't change the findById impl, so I don't break the encapsulation
     @Override
     public void save(Account account) {
         if (account.getId() != null) {
-            Account found = findById(account.getId()).orElseThrow(IllegalArgumentException::new);
-            found.setName(account.getName());
-            found.setAddress(account.getAddress());
-            found.setBalance(account.getBalance());
+            Account foundAccount = accounts.stream()
+                    .filter(acc -> Objects.equals(acc.getId(), account.getId()))
+                    .findFirst()
+                    .orElseThrow(IllegalArgumentException::new);
+
+            foundAccount.setName(account.getName());
+            foundAccount.setAddress(account.getAddress());
+            foundAccount.setBalance(account.getBalance());
         } else throw new IllegalArgumentException();
     }
 
+    // fix 1: throw exception when null
     @Override
     public Optional<Account> findById(Long id) {
+        if(id == null){
+            throw new IllegalArgumentException();
+        }
+
         return accounts.stream()
                 .filter(account -> id.equals(account.getId()))
                 .findFirst()
-                .map(a-> new Account(a));
+                .map(Account::new); // shortened version of lambda
     }
 
     @Override
