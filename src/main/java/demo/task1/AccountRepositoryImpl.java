@@ -22,18 +22,21 @@ public class AccountRepositoryImpl implements AccountRepository {
 
     // fix 2: not using findById because it returns a copy
     // didn't change the findById impl, so I don't break the encapsulation
+    // moved the null check up so its similar to findById impl
     @Override
     public void save(Account account) {
-        if (account.getId() != null) {
-            Account foundAccount = accounts.stream()
-                    .filter(acc -> Objects.equals(acc.getId(), account.getId()))
-                    .findFirst()
-                    .orElseThrow(IllegalArgumentException::new);
+        if (account.getId() == null){
+            throw new IllegalArgumentException();
+        }
 
-            foundAccount.setName(account.getName());
-            foundAccount.setAddress(account.getAddress());
-            foundAccount.setBalance(account.getBalance());
-        } else throw new IllegalArgumentException();
+        Account foundAccount = accounts.stream()
+                .filter(acc -> Objects.equals(acc.getId(), account.getId()))
+                .findFirst()
+                .orElseThrow(IllegalArgumentException::new);
+
+        foundAccount.setName(account.getName());
+        foundAccount.setAddress(account.getAddress());
+        foundAccount.setBalance(account.getBalance());
     }
 
     // fix 1: throw exception when null
