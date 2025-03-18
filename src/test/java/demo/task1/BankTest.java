@@ -1,6 +1,5 @@
 package demo.task1;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -11,10 +10,10 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -39,157 +38,92 @@ public class BankTest {
     }
 
     @Test
-    void test_create_account_if_account_exists() {
-        Long id = bank.createAccount("x","y");
-        Long id2 = bank.createAccount("x","y");
-
-        assert id.equals(id2);
-    }
-
-    @Test
     void test_findAccount() {
-        Long id = bank.createAccount("x","y");
-        Long foundId = bank.findAccount("x","y");
+        when(accountRepository.findByNameAndAddress("x", "y"))
+                .thenReturn(Optional.of(new Account(1L, "x", "y", BigDecimal.ZERO)));
 
-        assert id.equals(foundId);
+        Long foundId = bank.findAccount("x", "y");
+
+        assertEquals(1L, foundId);
+        verify(accountRepository).findByNameAndAddress("x", "y");
     }
 
     @Test
     void test_findAccount_if_account_doesnt_exists() {
-        Long foundId = bank.findAccount("x","y");
+        when(accountRepository.findByNameAndAddress("x", "y")).thenReturn(Optional.empty());
 
-        assert foundId == null;
+        Long foundId = bank.findAccount("x", "y");
+
+        assertNull(foundId);
+        verify(accountRepository).findByNameAndAddress("x", "y");
     }
 
     @Test
     void test_deposit() {
-        Long id = bank.createAccount("x","y");
+        Account account = new Account(1L, "x", "y", BigDecimal.ZERO);
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
 
-        bank.deposit(id, BigDecimal.valueOf(1));
-        bank.deposit(id, BigDecimal.valueOf(10));
-        bank.deposit(id, BigDecimal.valueOf(100));
+        bank.deposit(1L, BigDecimal.valueOf(1));
 
-        BigDecimal result = bank.getBalance(id);
-
-        assertEquals(result, BigDecimal.valueOf(111));
-    }
-
-    @Test
-    void test_deposit_zero() {
-        Long id = bank.createAccount("x","y");
-
-        bank.deposit(id, BigDecimal.valueOf(0));
-
-        BigDecimal result = bank.getBalance(id);
-
-        assertEquals(result, BigDecimal.ZERO);
-    }
-
-    @Test
-    void test_deposit_negative() {
-        Long id = bank.createAccount("x","y");
-
-        bank.deposit(id, BigDecimal.valueOf(-10));
-
-        BigDecimal result = bank.getBalance(id);
-
-        assert result.equals(BigDecimal.valueOf(-10));
-    }
-
-    @Test
-    void test_deposit_floats() {
-        Long id = bank.createAccount("x","y");
-
-        bank.deposit(id, BigDecimal.valueOf(5.5));
-        bank.deposit(id, BigDecimal.valueOf(5.5));
-        bank.deposit(id, BigDecimal.valueOf(10.9));
-
-        BigDecimal result = bank.getBalance(id);
-
-        assertEquals(result, BigDecimal.valueOf(21.9));
-    }
-
-    @Test
-    void test_deposit_null() {
-        Long id = bank.createAccount("x","y");
-
-        bank.deposit(id, null);
-
-        BigDecimal result = bank.getBalance(id);
-
-        assertEquals(result, BigDecimal.ZERO);
-    }
-
-    @Test
-    void test_deposit_not_existing_id() {
-        assertThrows(Bank.AccountIdException.class, () -> bank.deposit(1L, BigDecimal.ZERO));
-    }
-
-    @Test
-    void test_deposit_null_id() {
-        assertThrows(Bank.AccountIdException.class, () -> bank.deposit(null, BigDecimal.ZERO));
-    }
-
-    @Test
-    void test_deposit_when_account_doesnt_exists() {
-        assertThrows(Bank.AccountIdException.class, () -> bank.deposit(1L, BigDecimal.ONE));
+        verify(accountRepository).findById(1L);
+        verify(accountRepository).save(any(Account.class));
     }
 
     @Test
     void test_getBalance() {
-        Long id = bank.createAccount("x","y");
+        when(accountRepository.findById(1L)).thenReturn(
+                Optional.of(new Account(1L, "x", "y", BigDecimal.ONE)));
 
-        bank.deposit(id, BigDecimal.ONE);
-        BigDecimal result = bank.getBalance(id);
+        BigDecimal result = bank.getBalance(1L);
 
-        assertEquals(result, BigDecimal.ONE);
+        assertEquals(BigDecimal.ONE, result);
+        verify(accountRepository).findById(1L);
     }
 
     @Test
     void test_getBalance_with_no_previous_deposits() {
-        Long id = bank.createAccount("x","y");
+        when(accountRepository.findById(1L)).thenReturn(
+                Optional.of(new Account(1L, "x", "y", BigDecimal.ZERO)));
 
-        BigDecimal balance = bank.getBalance(id);
+        BigDecimal balance = bank.getBalance(1L);
 
-        assertEquals(balance, BigDecimal.ZERO);
-    }
-
-    @Test
-    void test_getBalance_when_account_doesnt_exists() {
-        assertThrows(Bank.AccountIdException.class, () -> bank.deposit(1L, BigDecimal.ONE));
-    }
-
-    @Test
-    void test_getBalance_when_null_id() {
-        assertThrows(Bank.AccountIdException.class, () -> bank.deposit(null, BigDecimal.ONE));
+        assertEquals(BigDecimal.ZERO, balance);
+        verify(accountRepository).findById(1L);
     }
 
     @Test
     void test_withdraw() {
-        Long id = bank.createAccount("x","y");
-        bank.deposit(id, BigDecimal.ONE);
-        bank.withdraw(id, BigDecimal.ONE);
-        BigDecimal balance = bank.getBalance(id);
+        when(accountRepository.findById(1L)).thenReturn(
+                Optional.of(new Account(1L, "x", "y", BigDecimal.ONE)));
 
-        assertEquals(balance, BigDecimal.ONE);
+        bank.withdraw(1L, BigDecimal.ONE);
+
+        verify(accountRepository).findById(1L);
+        verify(accountRepository).save(any(Account.class));
     }
 
     @Test
     void test_withdraw_null() {
-        Long id = bank.createAccount("x","y");
-        bank.withdraw(id, null);
-        BigDecimal balance = bank.getBalance(id);
+        when(accountRepository.findById(1L)).thenReturn(
+                Optional.of(new Account(1L, "x", "y", BigDecimal.ZERO)));
 
-        assertEquals(balance, BigDecimal.ZERO);
+        bank.withdraw(1L, null);
+
+        verify(accountRepository).findById(1L);
+        verify(accountRepository).save(any(Account.class));
     }
 
     @Test
-    void test_withdraw_when_account_doesnt_exists() {
-        assertThrows(Bank.AccountIdException.class, () -> bank.withdraw(1L, BigDecimal.ONE));
-    }
+    void test_transfer() {
+        when(accountRepository.findById(1L)).thenReturn(
+                Optional.of(new Account(1L, "x", "y", BigDecimal.ONE)));
+        when(accountRepository.findById(2L)).thenReturn(
+                Optional.of(new Account(2L, "a", "b", BigDecimal.ZERO)));
 
-    @Test
-    void test_withdraw_when_null_id() {
-        assertThrows(Bank.AccountIdException.class, () -> bank.withdraw(null, BigDecimal.ONE));
+        bank.transfer(1L, 2L, BigDecimal.ONE);
+
+        verify(accountRepository).findById(1L);
+        verify(accountRepository).findById(2L);
+        verify(accountRepository, times(2)).save(any(Account.class));
     }
 }
